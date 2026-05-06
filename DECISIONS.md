@@ -32,6 +32,5 @@ I'd also like to add proper timezone handling using the pickup location's local 
 The most significant UX optimization would be to alert the user when the dates they've selected nearly qualify for a long-duration or holiday discount. We built in these discounts but never surface them proactively, and a nudge in this direction could meaningfully improve conversion.
 
 Others include:
-- The list of items shift slightly shift horizontally when filters are applied. This is a little jarring and fixing this subtlety adds trust/professionality and is an accessibility win as well.
 - Debounce filtering. Fast filter changes can cause janky re-renders and could stress the API unnecessarily. Debouncing makes this smoother and results in fewer calls. If a search was added, we'd want to debounce this as well.
 - Car images currently have no skeleton and load in as "image not found" style errors for the first couple paints. Skeletons would make the loading state feel intentional.
