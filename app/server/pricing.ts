@@ -99,6 +99,21 @@ function pickBestDiscount(
   return finalTotal(a) <= finalTotal(b) ? a : b;
 }
 
+/**
+ * Calculates a pricing quote for a vehicle reservation, applying the best
+ * available discount if one applies.
+ *
+ * Discount rules:
+ * - Holiday (17% off total): a recognised holiday must fall strictly between
+ *   the start and end dates. A holiday on the start or end day does not
+ *   qualify. Holidays are evaluated on UTC date boundaries — the time
+ *   component is ignored.
+ * - Long rental ($10/hr off): reservation must be strictly longer than 72
+ *   hours.
+ * - Discounts are mutually exclusive. If both apply, the one producing the
+ *   lower total is used. Holiday discount wins on a tie — this is intentional
+ *   for marketing reasons, not an arbitrary choice.
+ */
 export function buildQuote({
   start,
   end,
