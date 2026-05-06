@@ -28,12 +28,29 @@ describe("API price filtering", () => {
 
     expect(result.vehicles.length).toBeGreaterThan(0);
     for (const vehicle of result.vehicles) {
-      expect(vehicle.hourly_rate_cents).toBeLessThanOrEqual(100 * 100);
+      expect(vehicle.vehicle.hourly_rate_cents).toBeLessThanOrEqual(100 * 100);
     }
   });
 
   it("uses the most expensive vehicle as max filter option", () => {
     const options = API.getFilterOptions();
     expect(options.maxPriceDollars).toBe(220);
+  });
+
+  it("returns quote information for each search result", () => {
+    const { startTime, endTime } = buildFarFutureRange();
+    const result = API.searchVehicles({
+      startTime,
+      endTime,
+      passengerCount: 1,
+      classifications: API.getFilterOptions().classifications,
+      makes: API.getFilterOptions().makes,
+      priceMin: 10,
+      priceMax: 220,
+    });
+
+    expect(result.vehicles.length).toBeGreaterThan(0);
+    expect(result.vehicles[0].quote.baseTotalCents).toBeGreaterThan(0);
+    expect(result.vehicles[0].quote.finalTotalCents).toBeGreaterThan(0);
   });
 });
