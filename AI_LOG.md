@@ -447,3 +447,36 @@ If you want, next I can add a focused unit test for API.searchVehicles proving m
 <!-- Me -->
 Yes, go ahead and use our testing library to ensure this behaves as expected. The test should legitimately test the condition.
 
+Added and executed a real regression test suite for the price filter behavior.
+
+Added test
+
+api.test.ts
+
+
+What it verifies
+priceMax is a true hard cap
+
+Calls API.searchVehicles with priceMax: 100.
+
+Asserts every returned vehicle has hourly_rate_cents <= 10000.
+
+This directly guards against the old 100 => infinity behavior.
+
+
+
+Dynamic max filter option
+
+
+Asserts API.getFilterOptions().maxPriceDollars === 220 (current most expensive seeded vehicle).
+
+
+Test run result
+
+Command run: npm run test -- app/server/api.test.ts
+
+Outcome: 1 passed, 2 passed tests
+
+
+If you want, I can add one more test for a non-round cap (e.g. $125) to lock in that future requirement explicitly.
+
