@@ -1,6 +1,6 @@
 import { formatCents } from "@/lib/formatters";
 import { Vehicle } from "@/server/data";
-import { Quote } from "@/server/pricing";
+import { Quote } from "@/types";
 import { useBase64Image } from "@/util/useBase64Image";
 import Link from "next/link";
 import { Button } from "@/components/shared/ui/button";

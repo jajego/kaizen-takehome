@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { Quote } from "../types";
 
 const HOLIDAYS_MM_DD = new Set([
   "01-21",
@@ -16,34 +17,6 @@ const HOLIDAYS_MM_DD = new Set([
 const LONG_RENTAL_DISCOUNT_CENTS_PER_HOUR = 1000;
 const HOLIDAY_DISCOUNT_RATE = 0.17;
 
-export type AppliedDiscount =
-  | {
-      type: "none";
-      label: null;
-      amountCents: 0;
-      scope: null;
-    }
-  | {
-      type: "holiday_17_percent";
-      label: "Holiday discount (17% off)";
-      amountCents: number;
-      scope: "total";
-    }
-  | {
-      type: "long_rental_10_per_hour";
-      label: "$10/hr long-rental discount";
-      amountCents: number;
-      scope: "hourly";
-      discountedHourlyRateCents: number;
-    };
-
-export type Quote = {
-  durationHours: number;
-  baseHourlyRateCents: number;
-  baseTotalCents: number;
-  finalTotalCents: number;
-  discount: AppliedDiscount;
-};
 
 const toUtcDate = (dateTime: DateTime) => dateTime.toUTC().startOf("day");
 

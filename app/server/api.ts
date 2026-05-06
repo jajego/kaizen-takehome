@@ -5,7 +5,8 @@ import {
   getVehicleById,
   getVehicles,
 } from "./data_helpers";
-import { buildQuote, Quote } from "./pricing";
+import { Quote } from "../types";
+import { buildQuote } from "./pricing";
 
 const parseAndValidateTimeRange = (startTime: string, endTime: string) => {
   const start = DateTime.fromISO(startTime);
