@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { Quote } from "../types";
+import { AppliedDiscount, Quote } from "../types";
 
 const HOLIDAYS_MM_DD = new Set([
   "01-21",
@@ -16,28 +16,88 @@ const HOLIDAYS_MM_DD = new Set([
 
 const LONG_RENTAL_DISCOUNT_CENTS_PER_HOUR = 1000;
 const HOLIDAY_DISCOUNT_RATE = 0.17;
+const LONG_RENTAL_THRESHOLD_HOURS = 72;
 
+const NO_DISCOUNT: AppliedDiscount = {
+  type: "none",
+  label: null,
+  amountCents: 0,
+  scope: null,
+};
 
 const toUtcDate = (dateTime: DateTime) => dateTime.toUTC().startOf("day");
 
-const isHolidayDate = (dateTime: DateTime) => {
-  const mmdd = dateTime.toFormat("MM-dd");
-  return HOLIDAYS_MM_DD.has(mmdd);
-};
+const isHolidayDate = (dateTime: DateTime) =>
+  HOLIDAYS_MM_DD.has(dateTime.toFormat("MM-dd"));
 
 const reservationIncludesHoliday = (start: DateTime, end: DateTime) => {
-  const startUtcDate = toUtcDate(start);
   const endUtcDate = toUtcDate(end);
-
-  let cursor = startUtcDate.plus({ days: 1 });
+  let cursor = toUtcDate(start).plus({ days: 1 });
   while (cursor < endUtcDate) {
-    if (isHolidayDate(cursor)) {
-      return true;
-    }
+    if (isHolidayDate(cursor)) return true;
     cursor = cursor.plus({ days: 1 });
   }
   return false;
 };
+
+function computeHolidayDiscount(
+  baseTotalCents: number,
+  start: DateTime,
+  end: DateTime,
+): AppliedDiscount | null {
+  const eligible =
+    reservationIncludesHoliday(start, end) &&
+    !isHolidayDate(toUtcDate(start)) &&
+    !isHolidayDate(toUtcDate(end));
+
+  if (!eligible) return null;
+
+  const amountCents = Math.round(baseTotalCents * HOLIDAY_DISCOUNT_RATE);
+  return {
+    type: "holiday_17_percent",
+    label: "Holiday discount (17% off)",
+    amountCents,
+    scope: "total",
+  };
+}
+
+function computeLongRentalDiscount(
+  hourlyRateCents: number,
+  baseTotalCents: number,
+  durationHours: number,
+): AppliedDiscount | null {
+  if (durationHours <= LONG_RENTAL_THRESHOLD_HOURS) return null;
+
+  const discountedHourlyRateCents = Math.max(
+    0,
+    hourlyRateCents - LONG_RENTAL_DISCOUNT_CENTS_PER_HOUR,
+  );
+  const amountCents =
+    baseTotalCents - Math.round(discountedHourlyRateCents * durationHours);
+  return {
+    type: "long_rental_10_per_hour",
+    label: "$10/hr long-rental discount",
+    amountCents,
+    scope: "hourly",
+    discountedHourlyRateCents,
+  };
+}
+
+// Picks the discount that results in the lowest final total.
+// Holiday discount wins on a tie.
+function pickBestDiscount(
+  a: AppliedDiscount | null,
+  b: AppliedDiscount | null,
+  baseTotalCents: number,
+): AppliedDiscount {
+  const finalTotal = (d: AppliedDiscount | null) =>
+    d ? baseTotalCents - d.amountCents : Infinity;
+
+  if (!a && !b) return NO_DISCOUNT;
+  if (!a) return b!;
+  if (!b) return a;
+  return finalTotal(a) <= finalTotal(b) ? a : b;
+}
 
 export function buildQuote({
   start,
@@ -51,99 +111,19 @@ export function buildQuote({
   const durationHours = end.diff(start, "hours").hours || 0;
   const baseTotalCents = Math.round(hourlyRateCents * durationHours);
 
-  const startsOnHoliday = isHolidayDate(toUtcDate(start));
-  const endsOnHoliday = isHolidayDate(toUtcDate(end));
-  const includesHoliday = reservationIncludesHoliday(start, end);
-  const holidayEligible = includesHoliday && !startsOnHoliday && !endsOnHoliday;
-  const longRentalEligible = durationHours > 72;
-
-  const holidayDiscountAmount = holidayEligible
-    ? Math.round(baseTotalCents * HOLIDAY_DISCOUNT_RATE)
-    : 0;
-  const holidayFinalTotal = baseTotalCents - holidayDiscountAmount;
-
-  const discountedHourlyRateCents = Math.max(
-    0,
-    hourlyRateCents - LONG_RENTAL_DISCOUNT_CENTS_PER_HOUR,
+  const holiday = computeHolidayDiscount(baseTotalCents, start, end);
+  const longRental = computeLongRentalDiscount(
+    hourlyRateCents,
+    baseTotalCents,
+    durationHours,
   );
-  const longRentalFinalTotal = Math.round(
-    discountedHourlyRateCents * durationHours,
-  );
-  const longRentalDiscountAmount = baseTotalCents - longRentalFinalTotal;
-
-  if (holidayEligible && longRentalEligible) {
-    // Tie-breaker is intentionally biased toward holiday discount.
-    if (holidayFinalTotal <= longRentalFinalTotal) {
-      return {
-        durationHours,
-        baseHourlyRateCents: hourlyRateCents,
-        baseTotalCents,
-        finalTotalCents: holidayFinalTotal,
-        discount: {
-          type: "holiday_17_percent",
-          label: "Holiday discount (17% off)",
-          amountCents: holidayDiscountAmount,
-          scope: "total",
-        },
-      };
-    }
-
-    return {
-      durationHours,
-      baseHourlyRateCents: hourlyRateCents,
-      baseTotalCents,
-      finalTotalCents: longRentalFinalTotal,
-      discount: {
-        type: "long_rental_10_per_hour",
-        label: "$10/hr long-rental discount",
-        amountCents: longRentalDiscountAmount,
-        scope: "hourly",
-        discountedHourlyRateCents,
-      },
-    };
-  }
-
-  if (holidayEligible) {
-    return {
-      durationHours,
-      baseHourlyRateCents: hourlyRateCents,
-      baseTotalCents,
-      finalTotalCents: holidayFinalTotal,
-      discount: {
-        type: "holiday_17_percent",
-        label: "Holiday discount (17% off)",
-        amountCents: holidayDiscountAmount,
-        scope: "total",
-      },
-    };
-  }
-
-  if (longRentalEligible) {
-    return {
-      durationHours,
-      baseHourlyRateCents: hourlyRateCents,
-      baseTotalCents,
-      finalTotalCents: longRentalFinalTotal,
-      discount: {
-        type: "long_rental_10_per_hour",
-        label: "$10/hr long-rental discount",
-        amountCents: longRentalDiscountAmount,
-        scope: "hourly",
-        discountedHourlyRateCents,
-      },
-    };
-  }
+  const discount = pickBestDiscount(holiday, longRental, baseTotalCents);
 
   return {
     durationHours,
     baseHourlyRateCents: hourlyRateCents,
     baseTotalCents,
-    finalTotalCents: baseTotalCents,
-    discount: {
-      type: "none",
-      label: null,
-      amountCents: 0,
-      scope: null,
-    },
+    finalTotalCents: baseTotalCents - discount.amountCents,
+    discount,
   };
 }
