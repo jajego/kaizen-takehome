@@ -1,5 +1,6 @@
 import { formatCents } from "@/lib/formatters";
 import { Vehicle } from "@/server/data";
+import { Quote } from "@/server/pricing";
 import { useBase64Image } from "@/util/useBase64Image";
 import Link from "next/link";
 import { Button } from "@/components/shared/ui/button";
@@ -7,10 +8,12 @@ import { Card, CardTitle } from "@/components/shared/ui/card";
 
 export function VehicleListItem({
   vehicle,
+  quote,
   startDateTime,
   endDateTime,
 }: {
   vehicle: Vehicle;
+  quote: Quote;
   startDateTime: Date;
   endDateTime: Date;
 }) {
@@ -54,9 +57,35 @@ export function VehicleListItem({
         </dl>
       </div>
       <div className="md:ml-auto text-center md:text-right flex flex-col justify-center mt-4 md:mt-0">
-        <p className="text-xl font-bold">
-          {formatCents(vehicle.hourly_rate_cents)}
-          <span className="text-sm text-gray-700 font-normal ml-0.5">/hr</span>
+        {quote.discount.type === "long_rental_10_per_hour" ? (
+          <div>
+            <p className="text-sm text-gray-600 line-through">
+              {formatCents(vehicle.hourly_rate_cents)}
+              <span className="text-xs ml-0.5">/hr</span>
+            </p>
+            <p className="text-xl font-bold">
+              {formatCents(quote.discount.discountedHourlyRateCents)}
+              <span className="text-sm text-gray-700 font-normal ml-0.5">
+                /hr
+              </span>
+            </p>
+          </div>
+        ) : (
+          <p className="text-xl font-bold">
+            {formatCents(vehicle.hourly_rate_cents)}
+            <span className="text-sm text-gray-700 font-normal ml-0.5">/hr</span>
+          </p>
+        )}
+        {quote.discount.type !== "none" && (
+          <p className="text-sm text-green-700 mt-1">{quote.discount.label}</p>
+        )}
+        <p className="text-sm text-gray-700 mt-1">
+          {quote.discount.type !== "none" && (
+            <span className="line-through mr-1">
+              {formatCents(quote.baseTotalCents)}
+            </span>
+          )}
+          <span>Total: {formatCents(quote.finalTotalCents)}</span>
         </p>
         <Button asChild className="mt-2 w-full sm:w-auto">
           <Link href={`/review?${bookNowParams.toString()}`}>

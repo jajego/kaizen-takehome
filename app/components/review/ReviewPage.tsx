@@ -84,20 +84,50 @@ function Content() {
             <div>
               <dt className="text-sm text-gray-600">Hourly Rate</dt>
               <dd>
-                <span className="text-lg">
-                  {formatCents(vehicle.hourly_rate_cents)}
-                </span>
-                <span className="text-xs">/hr</span>
+                {quote.discount.type === "long_rental_10_per_hour" ? (
+                  <div>
+                    <p className="text-sm text-gray-600 line-through">
+                      {formatCents(quote.baseHourlyRateCents)}
+                      <span className="text-xs ml-0.5">/hr</span>
+                    </p>
+                    <p>
+                      <span className="text-lg">
+                        {formatCents(quote.discount.discountedHourlyRateCents)}
+                      </span>
+                      <span className="text-xs">/hr</span>
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <span className="text-lg">
+                      {formatCents(quote.baseHourlyRateCents)}
+                    </span>
+                    <span className="text-xs">/hr</span>
+                  </div>
+                )}
               </dd>
             </div>
             <div>
               <dt className="text-sm text-gray-600">Duration</dt>
               <dd>{formattedDuration}</dd>
             </div>
+            {quote.discount.type !== "none" && (
+              <div>
+                <dt className="text-sm text-gray-600">{quote.discount.label}</dt>
+                <dd className="text-green-700">
+                  -{formatCents(quote.discount.amountCents)}
+                </dd>
+              </div>
+            )}
             <div>
               <dt className="text-sm text-gray-600">Total Cost</dt>
               <dd className="text-2xl font-medium tracking-tight">
-                {formatCents(quote.totalPriceCents)}
+                {quote.discount.type !== "none" && (
+                  <span className="text-sm text-gray-600 line-through mr-2">
+                    {formatCents(quote.baseTotalCents)}
+                  </span>
+                )}
+                {formatCents(quote.finalTotalCents)}
               </dd>
             </div>
           </dl>

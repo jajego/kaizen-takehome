@@ -49,8 +49,9 @@ export function VehicleList() {
       <ul className="space-y-4">
         {searchResponse.vehicles.map((vehicle) => (
           <VehicleListItem
-            key={vehicle.id}
-            vehicle={vehicle}
+            key={vehicle.vehicle.id}
+            vehicle={vehicle.vehicle}
+            quote={vehicle.quote}
             startDateTime={startDateTime}
             endDateTime={endDateTime}
           />
